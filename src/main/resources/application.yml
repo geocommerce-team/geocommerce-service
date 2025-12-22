@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+external:
+  rent-points:
+    url: http://localhost:8082
+  retail-points:
+    url: http://retail-points-service:8080
+  population:
+    url: http://localhost:8083
+
+spring:
+  application:
+    name: geo-commerce-service
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info,metrics
