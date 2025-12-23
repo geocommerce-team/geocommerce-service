@@ -14,7 +14,7 @@ public class GeoTrafficService {
     private final PopulationClient populationClient;
     private final GeoTrafficRepository geoTrafficRepository;
 
-    private static final long CACHE_HOURS = 24;
+    private static final long CACHE_HOURS = 24 * 30 * 12;
 
     public GeoTrafficService(PopulationClient populationClient, GeoTrafficRepository geoTrafficRepository) {
         this.populationClient = populationClient;
@@ -28,7 +28,7 @@ public class GeoTrafficService {
                 .findFreshByBounds((latMin + latMax) / 2, (lonMax +  lonMax) / 2, threshold);
 
         if (!cached.isEmpty()) {
-            return cached.getFirst().getCount();
+            return cached.getFirst().getCount_people();
         }
 
         int dto = populationClient.getPopulation(latMin, lonMin, latMax, lonMax);

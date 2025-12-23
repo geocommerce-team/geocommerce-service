@@ -7,7 +7,6 @@ import ru.geocommerce.model.GeoRentPoint;
 import ru.geocommerce.repository.GeoRentPointRepository;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,7 +16,7 @@ public class GeoRentPointsService {
     private final RentPointsClient rentPointsClient;
     private final GeoRentPointRepository geoRentPointRepository;
 
-    private final long CACHE_HOURS = 24;
+    private static final long CACHE_HOURS = 24 * 30;
 
     public GeoRentPointsService(RentPointsClient rentPointsClient,
                                 GeoRentPointRepository geoRentPointRepository) {

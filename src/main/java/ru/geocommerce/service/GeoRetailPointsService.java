@@ -16,7 +16,7 @@ public class GeoRetailPointsService {
     private final RetailPointsClient retailPointsClient;
     private final GeoRetailPointRepository geoRetailPointRepository;
 
-    private static final long CACHE_HOURS = 24;
+    private static final long CACHE_HOURS = 24 * 30;
 
     public GeoRetailPointsService(RetailPointsClient retailPointsClient,
                                   GeoRetailPointRepository geoRetailPointRepository) {
