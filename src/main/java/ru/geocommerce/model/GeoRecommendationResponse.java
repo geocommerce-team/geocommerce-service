@@ -7,7 +7,6 @@ public class GeoRecommendationResponse {
     private List<GeoRentPoint> regularRentPoints;
     private List<GeoRetailPoint> retailPoints;
 
-    // Конструкторы, геттеры, сеттеры
     public GeoRecommendationResponse() {}
 
     public GeoRecommendationResponse(List<GeoRentPoint> recommendedRentPoints,
@@ -18,7 +17,6 @@ public class GeoRecommendationResponse {
         this.retailPoints = retailPoints;
     }
 
-    // Getters & Setters
     public List<GeoRentPoint> getRecommendedRentPoints() { return recommendedRentPoints; }
     public void setRecommendedRentPoints(List<GeoRentPoint> recommendedRentPoints) { this.recommendedRentPoints = recommendedRentPoints; }
     public List<GeoRentPoint> getRegularRentPoints() { return regularRentPoints; }
