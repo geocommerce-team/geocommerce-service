@@ -63,6 +63,8 @@ public class GeoCommerceController {
         List<GeoRetailPoint> retailPoints = retailFuture.get();
         List<Region> regions = regionsFuture.get();
 
+        executor.shutdown();
+
 
         List<GeoRentPoint> filtered = recommendationEngine.filterRentPoints(rentPoints, retailPoints);
         List<GeoRentPoint> ranked = recommendationEngine.rankByTraffic(filtered, regions);
@@ -91,79 +93,102 @@ public class GeoCommerceController {
     private List<GeoRentPoint> getRentPoints(double latMin, double latMax, double lonMin, double lonMax) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-
         double delta = 100.0;
+
         latMin = Math.round(latMin * delta);
         latMax = Math.round(latMax * delta + deltaLat);
         lonMin = Math.round(lonMin * delta);
         lonMax = Math.round(lonMax * delta + deltaLon);
 
-        ArrayList<GeoRentPoint> rentPoints = new ArrayList<>();
+        List<Double> latitudes = new ArrayList<>();
+        for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
 
-        for (double lat = latMin; lat < latMax; lat += deltaLat) {
-            for (double lon = lonMin; lon < lonMax; lon += deltaLon) {
-                rentPoints.addAll(rentPointsService.getRentPoints(
-                        lon / delta,
-                        (lon + deltaLon) / delta,
-                        (lat + deltaLat) / delta,
-                        lat / delta));
-            }
-        }
-        return rentPoints;
+        List<Double> longitudes = new ArrayList<>();
+        for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
+
+        // Параллельный цикл через stream
+        return latitudes.parallelStream()
+                .flatMap(lat ->
+                        longitudes.parallelStream()
+                                .flatMap(lon ->
+                                        rentPointsService.getRentPoints(
+                                                lon / delta,
+                                                (lon + deltaLon) / delta,
+                                                (lat + deltaLat) / delta,
+                                                lat / delta
+                                        ).stream()
+                                )
+                )
+                .toList();
     }
+
 
     private List<GeoRetailPoint> getRetailPoints(double latMin, double latMax, double lonMin, double lonMax, String category) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-
         double delta = 100.0;
+
         latMin = Math.round(latMin * delta);
         latMax = Math.round(latMax * delta + deltaLat);
         lonMin = Math.round(lonMin * delta);
         lonMax = Math.round(lonMax * delta + deltaLon);
 
-        ArrayList<GeoRetailPoint> retailPoints = new ArrayList<>();
+        List<Double> latitudes = new ArrayList<>();
+        for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
 
-        for (double lat = latMin; lat < latMax; lat += deltaLat) {
-            for (double lon = lonMin; lon < lonMax; lon += deltaLon) {
-                retailPoints.addAll(retailPointsService.getRetailPoints(
-                        category,
-                        lat / delta,
-                        lon / delta,
-                        (lat + deltaLat) / delta,
-                        (lon + deltaLon) / delta));
-            }
-        }
-        return retailPoints;
+        List<Double> longitudes = new ArrayList<>();
+        for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
+
+        return latitudes.parallelStream()
+                .flatMap(lat ->
+                        longitudes.parallelStream()
+                                .flatMap(lon ->
+                                        retailPointsService.getRetailPoints(
+                                                category,
+                                                lat / delta,
+                                                lon / delta,
+                                                (lat + deltaLat) / delta,
+                                                (lon + deltaLon) / delta
+                                        ).stream()
+                                )
+                )
+                .toList();
     }
+
 
     private List<Region> getRegions(double latMin, double latMax, double lonMin, double lonMax) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-
         double delta = 10000.0;
+
         latMin = Math.round(latMin * delta);
         latMax = Math.round(latMax * delta + deltaLat);
         lonMin = Math.round(lonMin * delta);
         lonMax = Math.round(lonMax * delta + deltaLon);
 
-        ArrayList<Region> regions = new ArrayList<>();
+        List<Double> latitudes = new ArrayList<>();
+        for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
 
-        for (double lat = latMin; lat < latMax; lat += deltaLat) {
-            for (double lon = lonMin; lon < lonMax; lon += deltaLon) {
-                Region region = new Region(lat / delta,
-                        (lat + deltaLat) / delta,
-                        lon / delta,
-                        (lon + deltaLon) / delta,
-                        trafficService.getPopulation(
-                                lat / delta,
-                                lon / delta,
-                                (lat + deltaLat) / delta,
-                                (lon + deltaLon) / delta
-                        ));
-                regions.add(region);
-            }
-        }
-        return regions;
+        List<Double> longitudes = new ArrayList<>();
+        for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
+
+        return latitudes.parallelStream()
+                .flatMap(lat ->
+                        longitudes.parallelStream()
+                                .map(lon -> new Region(
+                                        lat / delta,
+                                        (lat + deltaLat) / delta,
+                                        lon / delta,
+                                        (lon + deltaLon) / delta,
+                                        trafficService.getPopulation(
+                                                lat / delta,
+                                                lon / delta,
+                                                (lat + deltaLat) / delta,
+                                                (lon + deltaLon) / delta
+                                        )
+                                ))
+                )
+                .toList();
     }
+
 }
