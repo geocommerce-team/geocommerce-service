@@ -106,7 +106,6 @@ public class GeoCommerceController {
         List<Double> longitudes = new ArrayList<>();
         for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
 
-        // Параллельный цикл через stream
         return latitudes.parallelStream()
                 .flatMap(lat ->
                         longitudes.parallelStream()
@@ -126,7 +125,7 @@ public class GeoCommerceController {
     private List<GeoRetailPoint> getRetailPoints(double latMin, double latMax, double lonMin, double lonMax, String category) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-        double delta = 100.0;
+        double delta = 10.0;
 
         latMin = Math.round(latMin * delta);
         latMax = Math.round(latMax * delta + deltaLat);
@@ -159,7 +158,7 @@ public class GeoCommerceController {
     private List<Region> getRegions(double latMin, double latMax, double lonMin, double lonMax) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-        double delta = 10000.0;
+        double delta = 1000.0;
 
         latMin = Math.round(latMin * delta);
         latMax = Math.round(latMax * delta + deltaLat);
