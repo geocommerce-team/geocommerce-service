@@ -5,7 +5,7 @@ external:
   rent-points:
     url: http://localhost:8082
   retail-points:
-    url: http://retail-points-service:8080
+    url: http://retail-points-service:8081
   population:
     url: http://localhost:8083
 

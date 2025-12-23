@@ -45,15 +45,14 @@ public class GeoCommerceController {
 
         String bboxKey = String.format("%f_%f_%f_%f", latMin, lonMin, latMax, lonMax);
 
-        // Проверяем кэш
         GeoRecommendationResponse cached = cacheManager.getRecommendations(bboxKey, category);
         if (cached != null) {
             return ResponseEntity.ok(cached);
         }
-        // Получаем данные
+
         List<GeoRentPoint> rentPoints = rentPointsService.getRentPoints(lonMin, lonMax, latMax, latMin);
         List<GeoRetailPoint> retailPoints = retailPointsService.getRetailPoints(
-                String.valueOf(category.hashCode()), latMin, lonMin, latMax, lonMax);
+                category, latMin, lonMin, latMax, lonMax);
         int population = trafficService.getPopulation(latMin, lonMin, latMax, lonMax);
 
         // Фильтруем и ранжируем

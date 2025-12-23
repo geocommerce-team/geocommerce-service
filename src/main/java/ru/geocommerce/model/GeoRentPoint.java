@@ -1,13 +1,21 @@
 package ru.geocommerce.model;
 
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "geo_rent_points")
 public class GeoRentPoint {
+    @Id
     private String id;
     private double lat;
     private double lon;
     private String name;
     private String type;
 
-    // Конструкторы, геттеры, сеттеры
+    @Column(name = "last_updated")
+    private LocalDateTime lastUpdated;
+
     public GeoRentPoint() {}
 
     public GeoRentPoint(String id, double lat, double lon, String name, String type) {
@@ -16,9 +24,9 @@ public class GeoRentPoint {
         this.lon = lon;
         this.name = name;
         this.type = type;
+        this.lastUpdated = LocalDateTime.now(); // или задаётся позже
     }
 
-    // Getters & Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public double getLat() { return lat; }
@@ -29,4 +37,6 @@ public class GeoRentPoint {
     public void setName(String name) { this.name = name; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+    public LocalDateTime getLastUpdated() { return lastUpdated; }
+    public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
 }
