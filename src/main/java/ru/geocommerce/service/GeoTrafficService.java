@@ -1,6 +1,7 @@
 package ru.geocommerce.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.geocommerce.extern.client.PopulationClient;
 import ru.geocommerce.model.GeoTraffic;
 import ru.geocommerce.repository.GeoTrafficRepository;
@@ -21,18 +22,27 @@ public class GeoTrafficService {
         this.geoTrafficRepository = geoTrafficRepository;
     }
 
+    @Transactional
     public int getPopulation(double latMin, double lonMin, double latMax, double lonMax) {
         LocalDateTime threshold = LocalDateTime.now().minusHours(CACHE_HOURS);
 
         List<GeoTraffic> cached = geoTrafficRepository
-                .findFreshByBounds((latMin + latMax) / 2, (lonMax +  lonMax) / 2, threshold);
+                .findFreshByBounds((
+                        latMin + latMax) / 2,
+                        (lonMin + lonMax) / 2,
+                        threshold);
 
         if (!cached.isEmpty()) {
             return cached.getFirst().getCount_people();
         }
 
         int dto = populationClient.getPopulation(latMin, lonMin, latMax, lonMax);
-        GeoTraffic geoTraffic = new GeoTraffic(generateId((latMin + latMax) / 2, (lonMax +  lonMax) / 2), (latMin + latMax) / 2, (lonMax +  lonMax) / 2, dto);
+        GeoTraffic geoTraffic = new GeoTraffic(generateId(
+                (latMin + latMax) / 2,
+                (lonMin + lonMax) / 2),
+                (latMin + latMax) / 2,
+                (lonMin + lonMax) / 2,
+                dto);
 
         List<GeoTraffic> freshPoints = List.of(geoTraffic);
 

@@ -22,7 +22,7 @@ public class PopulationWebClient implements PopulationClient {
     public int getPopulation(double latMin, double lonMin, double latMax, double lonMax) {
         PopulationResponse response = webClient
                 .get()
-                .uri(baseUrl + "/api/population?latMin={latMin}&lonMin={lonMin}&latMax={latMax}&lonMax={lonMax}",
+                .uri(baseUrl + "/api/population?lat_min={latMin}&lon_min={lonMin}&lat_max={latMax}&lon_max={lonMax}",
                         latMin, lonMin, latMax, lonMax)
                 .retrieve()
                 .bodyToMono(PopulationResponse.class)

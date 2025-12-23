@@ -1,6 +1,7 @@
 package ru.geocommerce.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.geocommerce.extern.client.RentPointsClient;
 import ru.geocommerce.extern.dto.RentPointDto;
 import ru.geocommerce.model.GeoRentPoint;
@@ -24,6 +25,7 @@ public class GeoRentPointsService {
         this.geoRentPointRepository = geoRentPointRepository;
     }
 
+    @Transactional
     public List<GeoRentPoint> getRentPoints(double left, double right, double top, double bottom) {
         LocalDateTime threshold = LocalDateTime.now().minusHours(CACHE_HOURS);
 

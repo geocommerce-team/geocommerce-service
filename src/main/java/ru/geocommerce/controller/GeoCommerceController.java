@@ -22,7 +22,8 @@ public class GeoCommerceController {
     private final GeoRetailPointsService retailPointsService;
     private final GeoTrafficService trafficService;
     private final GeoRecommendationEngine recommendationEngine;
-
+    private final double delta = 100.0;
+    
     public record Region(double latMin, double latMax, double lonMin, double lonMax, int countPeoples) {}
 
     public GeoCommerceController(GeoRentPointsService rentPointsService,
@@ -47,10 +48,10 @@ public class GeoCommerceController {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
 
-        latMin = Math.round(latMin * 10000.0);
-        latMax = Math.round(latMax * 10000.0 + deltaLat);
-        lonMin = Math.round(lonMin * 10000.0);
-        lonMax = Math.round(lonMax * 10000.0 + deltaLon);
+        latMin = Math.round(latMin * delta);
+        latMax = Math.round(latMax * delta + deltaLat);
+        lonMin = Math.round(lonMin * delta);
+        lonMax = Math.round(lonMax * delta + deltaLon);
 
         ArrayList<GeoRentPoint> rentPoints = new ArrayList<>();
         ArrayList<GeoRetailPoint> retailPoints = new ArrayList<>();
@@ -60,14 +61,27 @@ public class GeoCommerceController {
         for (double lat = latMin; lat < latMax; lat += deltaLat) {
             for (double lon = lonMin; lon < lonMax; lon += deltaLon) {
 
-                rentPoints.addAll(rentPointsService.getRentPoints(lonMin, lonMax, latMax, latMin));
+                rentPoints.addAll(rentPointsService.getRentPoints(
+                        lon / delta,
+                        (lon + deltaLon) / delta,
+                        (lat + deltaLat) / delta,
+                        lat / delta));
                 retailPoints.addAll(retailPointsService.getRetailPoints(
-                        category, latMin, lonMin, latMax, lonMax));
-                Region region = new Region(lat / 10000.0,
-                        lon / 10000.0,
-                        (lat + deltaLat) / 10000.0,
-                        (lon + deltaLon) / 10000.0,
-                        trafficService.getPopulation(latMin, lonMin, latMax, lonMax));
+                        category,
+                        lat / delta,
+                        lon / delta,
+                        (lat + deltaLat) / delta,
+                        (lon + deltaLon) / delta));
+                Region region = new Region(lat / delta,
+                        (lat + deltaLat) / delta,
+                        lon / delta,
+                        (lon + deltaLon) / delta,
+                        trafficService.getPopulation(
+                                lat / delta,
+                                lon / delta,
+                                (lat + deltaLat) / delta,
+                                (lon + deltaLon) / delta
+                        ));
                 regions.add(region);
             }
         }

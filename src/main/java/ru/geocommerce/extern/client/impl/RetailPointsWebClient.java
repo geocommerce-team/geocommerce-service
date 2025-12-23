@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.geocommerce.extern.client.RetailPointsClient;
 import ru.geocommerce.extern.dto.RetailPointDto;
+import ru.geocommerce.extern.dto.RetailResponse;
 
 import java.util.List;
 
@@ -15,21 +16,21 @@ public class RetailPointsWebClient implements RetailPointsClient {
     private final String baseUrl;
 
     public RetailPointsWebClient(WebClient webClient,
-                                 @Value("${external.retail-points.url:http://retail-points:8080}") String baseUrl) {
+                                 @Value("${external.retail-points.url:http://retail-points:8081}") String baseUrl) {
         this.webClient = webClient;
         this.baseUrl = baseUrl;
     }
 
     @Override
     public List<RetailPointDto> getRetailPoints(String category, double latMin, double lonMin, double latMax, double lonMax) {
-        RetailPointDto[] response = webClient
+        RetailResponse response = webClient
                 .get()
-                .uri(baseUrl + "/api/retail-points?category={category}&latMin={latMin}&lonMin={lonMin}&latMax={latMax}&lonMax={lonMax}",
+                .uri(baseUrl + "/api/points?category={category}&latMin={latMin}&lonMin={lonMin}&latMax={latMax}&lonMax={lonMax}",
                         category, latMin, lonMin, latMax, lonMax)
                 .retrieve()
-                .bodyToMono(RetailPointDto[].class)
+                .bodyToMono(RetailResponse.class)
                 .block();
 
-        return response == null ? List.of() : List.of(response);
+        return response != null ? response.retailPoints() : null;
     }
 }

@@ -1,6 +1,7 @@
 package ru.geocommerce.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.geocommerce.extern.client.RetailPointsClient;
 import ru.geocommerce.extern.dto.RetailPointDto;
 import ru.geocommerce.model.GeoRetailPoint;
@@ -24,6 +25,7 @@ public class GeoRetailPointsService {
         this.geoRetailPointRepository = geoRetailPointRepository;
     }
 
+    @Transactional
     public List<GeoRetailPoint> getRetailPoints(String category,
                                                 double latMin, double lonMin,
                                                 double latMax, double lonMax) {
