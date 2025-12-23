@@ -20,7 +20,7 @@ spring:
           include: health,info,metrics
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/my_retail_db
+    url: jdbc:postgresql://localhost:5432/geocommerce_db
     username: postgres
     password: your_password
     driver-class-name: org.postgresql.Driver
