@@ -8,6 +8,8 @@ external:
     url: http://localhost:8081/geocommerce
   population:
     url: http://localhost:8083/geocommerce
+  nominatim:
+    url: https://nominatim.openstreetmap.org
 
 spring:
   application:
@@ -36,5 +38,5 @@ spring:
 
 logging:
   level:
-    org.hibernate.SQL: DEBUG
+    org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

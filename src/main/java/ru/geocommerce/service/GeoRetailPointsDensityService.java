@@ -2,12 +2,9 @@ package ru.geocommerce.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.geocommerce.extern.client.PopulationClient;
-import ru.geocommerce.model.GeoRegion;
-import ru.geocommerce.model.GeoRelevance;
-import ru.geocommerce.model.GeoTraffic;
+import ru.geocommerce.model.*;
 import ru.geocommerce.repository.GeoRelevanceRepository;
-import ru.geocommerce.repository.GeoTrafficRepository;
+import ru.geocommerce.repository.GeoRetailPointsDensityRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -16,23 +13,22 @@ import java.util.List;
 import static ru.geocommerce.controller.GeoCommerceController.DELTA;
 
 @Service
-public class GeoTrafficService {
-
-    private final PopulationClient populationClient;
-    private final GeoTrafficRepository geoTrafficRepository;
+public class GeoRetailPointsDensityService {
+    private final GeoRetailPointsDensityRepository geoRetailPointsDensityRepository;
     private final GeoRelevanceRepository geoRelevanceRepository;
 
     private static final long CACHE_MONTH = 6;
+    private final GeoRetailPointsService geoRetailPointsService;
 
-    public GeoTrafficService(PopulationClient populationClient, GeoTrafficRepository geoTrafficRepository, GeoRelevanceRepository geoRelevanceRepository) {
-        this.populationClient = populationClient;
-        this.geoTrafficRepository = geoTrafficRepository;
+    public GeoRetailPointsDensityService(GeoRetailPointsDensityRepository geoRetailPointsDensityRepository, GeoRelevanceRepository geoRelevanceRepository, GeoRetailPointsService geoRetailPointsService) {
+        this.geoRetailPointsDensityRepository = geoRetailPointsDensityRepository;
         this.geoRelevanceRepository = geoRelevanceRepository;
+        this.geoRetailPointsService = geoRetailPointsService;
     }
 
     @Transactional
-    public void updateOrLoadRegion(GeoRegion geoRegion) {
-        List<GeoRelevance> info = geoRelevanceRepository.findInfo(geoRegion.osm_id, "traffic");
+    public void updateOrLoadRegion(GeoRetailPointsService geoRetailPointsService, String category, GeoRegion geoRegion) {
+        List<GeoRelevance> info = geoRelevanceRepository.findInfo(geoRegion.osm_id, category + "_density");
         if(!info.isEmpty() && LocalDate.now().minusMonths(CACHE_MONTH).isBefore(info.getFirst().getUpdated())) {
             return;
         }
@@ -50,7 +46,7 @@ public class GeoTrafficService {
             int _lonMin = info.getFirst().getLon_min();
             int _latMax = info.getFirst().getLat_max();
             int _lonMax = info.getFirst().getLon_max();
-            geoTrafficRepository.deleteFreshByBounds(_latMin, _latMax, _lonMin, _lonMax);
+            geoRetailPointsDensityRepository.deleteFreshByBoundsAndCategory(_latMin, _latMax, _lonMin, _lonMax, category);
         }
         else{
             GeoRelevance geoRelevance = new GeoRelevance(
@@ -59,10 +55,11 @@ public class GeoTrafficService {
                     (int) (lonMin * DELTA),
                     (int) (lonMax * DELTA + deltaLon),
                     geoRegion.osm_id,
-                    "traffic"
+                    category + "_density"
             );
             geoRelevanceRepository.save(geoRelevance);
         }
+
         latMin = Math.floor(latMin * DELTA);
         latMax = Math.floor(latMax * DELTA + deltaLat);
         lonMin = Math.floor(lonMin * DELTA);
@@ -74,44 +71,47 @@ public class GeoTrafficService {
         List<Double> longitudes = new ArrayList<>();
         for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
 
-        List<GeoTraffic> traffic =  latitudes.parallelStream()
+        List<GeoRetailDensity> dtos = latitudes.parallelStream()
                 .flatMap(lat ->
                         longitudes.parallelStream()
-                                .map(lon ->
-                                    new GeoTraffic(
+                                .map(lon -> new GeoRetailDensity(
+                                        category,
                                         lat.intValue(),
                                         lon.intValue(),
-                                        populationClient.getPopulation(
-                                            lat / DELTA,
-                                            lon / DELTA,
-                                            (lat + deltaLat) / DELTA,
-                                            (lon + deltaLon) / DELTA
-                                        )
+                                        geoRetailPointsService.getRetailPoints(
+                                                category,
+                                                lat / DELTA,
+                                                lon / DELTA,
+                                                (lat + deltaLat) / DELTA,
+                                                (lon + deltaLon) / DELTA,
+                                                geoRegion.osm_id
+                                        ).size()
                                     )
                                 )
                 )
                 .toList();
 
-        geoTrafficRepository.saveAll(traffic);
+        geoRetailPointsDensityRepository.saveAll(dtos);
 
-        geoRelevanceRepository.updateInfo(LocalDate.now(), geoRegion.osm_id, "traffic");
-
+        geoRelevanceRepository.updateInfo(LocalDate.now(), geoRegion.osm_id, category + "_density");
     }
 
     @Transactional
-    public int getPopulation(double lat, double lon, long placeId) {
-        List<GeoRelevance> info = geoRelevanceRepository.findInfo(placeId, "traffic");
+    public int getRetailPoints(String category,
+                               double lat, double lon, long placeId) {
+        List<GeoRelevance> info = geoRelevanceRepository.findInfo(placeId, category + "_density");
         if (!info.isEmpty() && LocalDate.now().minusMonths(CACHE_MONTH).isBefore(info.getFirst().getUpdated())) {
-            List<GeoTraffic> cached = geoTrafficRepository
-                    .findFreshByBounds(
+            List<GeoRetailDensity> cached = geoRetailPointsDensityRepository
+                    .findFreshByBoundsAndCategory(
+                            category,
                             (int) (lat * DELTA),
-                            (int) (lon * DELTA));
+                            (int) (lon * DELTA)
+                    );
 
             if (!cached.isEmpty()) {
-                return cached.getFirst().getCount_people();
+                return cached.getFirst().getCount_points();
             }
         }
-
         return 0;
     }
 }

@@ -5,6 +5,9 @@ import ru.geocommerce.extern.client.NominatimClient;
 import ru.geocommerce.model.GeoRegion;
 import ru.geocommerce.extern.dto.NominatimResponse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class NominatimService {
     private final NominatimClient nominatimClient;
@@ -13,13 +16,18 @@ public class NominatimService {
         this.nominatimClient = nominatimClient;
     }
 
-    public GeoRegion getCity(double latMin, double lonMin,
+    public List<GeoRegion> getCity(double latMin, double lonMin,
                              double latMax, double lonMax) {
 
 
-        NominatimResponse dto = nominatimClient.getCity((latMin + latMax) / 2, (lonMin + lonMax) / 2);
+        List<NominatimResponse> dto = nominatimClient.getCity(latMin, lonMin, latMax, lonMax);
 
-        return getCityBoundingBox(dto);
+        List<GeoRegion> regions = new ArrayList<>();
+        for (NominatimResponse nominatimResponse : dto) {
+            regions.add(getCityBoundingBox(nominatimResponse));
+        }
+
+        return regions;
     }
 
     private GeoRegion getCityBoundingBox(NominatimResponse dto) {
@@ -30,6 +38,6 @@ public class NominatimService {
         double minLon = Double.parseDouble(dto.getBoundingbox().get(2));
         double maxLon = Double.parseDouble(dto.getBoundingbox().get(3));
 
-        return new GeoRegion(minLat, minLon, maxLat, maxLon, dto.getPlace_id());
+        return new GeoRegion(minLat, minLon, maxLat, maxLon, dto.getOsm_id());
     }
 }

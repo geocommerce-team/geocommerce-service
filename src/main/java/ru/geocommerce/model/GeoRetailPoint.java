@@ -5,32 +5,30 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "geo_retail_points")
+@IdClass(GeoRetailPointId.class)
 public class GeoRetailPoint {
-
     @Id
-    private String id;
+    @Column(name = "lat")
     private double lat;
+    @Id
+    @Column(name = "lon")
     private double lon;
+    @Id
+    @Column(name = "name")
     private String name;
+    @Id
+    @Column(name = "category")
     private String category;
-
-    @Column(name = "last_updated")
-    private LocalDateTime lastUpdated;
 
     public GeoRetailPoint() {}
 
-    public GeoRetailPoint(String id, double lat, double lon, String name, String category) {
-        this.id = id;
+    public GeoRetailPoint(double lat, double lon, String name, String category) {
         this.lat = lat;
         this.lon = lon;
         this.name = name;
         this.category = category;
-        this.lastUpdated = LocalDateTime.now();
     }
 
-    // Getters & Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
     public double getLat() { return lat; }
     public void setLat(double lat) { this.lat = lat; }
     public double getLon() { return lon; }
@@ -39,6 +37,4 @@ public class GeoRetailPoint {
     public void setName(String name) { this.name = name; }
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
-    public LocalDateTime getLastUpdated() { return lastUpdated; }
-    public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
 }

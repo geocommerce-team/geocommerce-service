@@ -3,38 +3,37 @@ package ru.geocommerce.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.geocommerce.engine.GeoRecommendationEngine;
-import ru.geocommerce.model.GeoRecommendationResponse;
-import ru.geocommerce.model.GeoRentPoint;
-import ru.geocommerce.model.GeoRetailPoint;
-import ru.geocommerce.service.GeoRentPointsService;
-import ru.geocommerce.service.GeoRetailPointsService;
-import ru.geocommerce.service.GeoTrafficService;
+import ru.geocommerce.model.*;
+import ru.geocommerce.service.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api")
 public class GeoCommerceController {
 
+    public static final double DELTA = 100.0;
+
     private final GeoRentPointsService rentPointsService;
     private final GeoRetailPointsService retailPointsService;
     private final GeoTrafficService trafficService;
+    private final NominatimService nominatimService;
+    private final GeoRetailPointsDensityService retailPointsDensityService;
     private final GeoRecommendationEngine recommendationEngine;
-
-    public record Region(double latMin, double latMax, double lonMin, double lonMax, int countPeoples) {}
 
     public GeoCommerceController(GeoRentPointsService rentPointsService,
                                  GeoRetailPointsService retailPointsService,
                                  GeoTrafficService trafficService,
+                                 NominatimService nominatimService,
+                                 GeoRetailPointsDensityService retailPointsDensityService,
                                  GeoRecommendationEngine recommendationEngine) {
         this.rentPointsService = rentPointsService;
         this.retailPointsService = retailPointsService;
         this.trafficService = trafficService;
+        this.nominatimService = nominatimService;
+        this.retailPointsDensityService = retailPointsDensityService;
         this.recommendationEngine = recommendationEngine;
     }
 
@@ -44,126 +43,90 @@ public class GeoCommerceController {
             @RequestParam double latMin,
             @RequestParam double lonMin,
             @RequestParam double latMax,
-            @RequestParam double lonMax) throws ExecutionException, InterruptedException {
-        ExecutorService executor = Executors.newFixedThreadPool(3);
+            @RequestParam double lonMax) {
 
-        Future<List<GeoRentPoint>> rentFuture = executor.submit(() ->
-                getRentPoints(latMin, latMax, lonMin, lonMax)
-        );
+        List<GeoRegion> geoRegions = nominatimService.getCity(latMin, lonMin, latMax, lonMax);
 
-        Future<List<GeoRetailPoint>> retailFuture = executor.submit(() ->
-                getRetailPoints(latMin, latMax, lonMin, lonMax, category)
-        );
+        GeoRecommendationResponse response = new GeoRecommendationResponse();
 
-        Future<List<Region>> regionsFuture = executor.submit(() ->
-                getRegions(latMin, latMax, lonMin, lonMax)
-        );
+        for (GeoRegion region : geoRegions) {
+            if(region.osm_id != 366544){
+                continue;
+            }
+            response.combine(getResponse(category, latMin, lonMin, latMax, lonMax, region));
+        }
 
-        List<GeoRentPoint> rentPoints = rentFuture.get();
-        List<GeoRetailPoint> retailPoints = retailFuture.get();
-        List<Region> regions = regionsFuture.get();
+        return ResponseEntity.ok(response);
+    }
 
-        executor.shutdown();
+    private GeoRecommendationResponse getResponse(String category, double latMin, double lonMin, double latMax, double lonMax, GeoRegion geoRegion) {
+        final double finalLatMin = geoRegion.getMinLat();
+        final double finalLonMin = geoRegion.getMinLon();
+        final double finalLatMax = geoRegion.getMaxLat();
+        final double finalLonMax = geoRegion.getMaxLon();
 
+        rentPointsService.updateOrLoadRegion(geoRegion);
+        retailPointsService.updateOrLoadRegion(category, geoRegion);
+        trafficService.updateOrLoadRegion(geoRegion);
+        retailPointsDensityService.updateOrLoadRegion(retailPointsService, category, geoRegion);
+
+        List<GeoRentPoint> rentPoints = getRentPoints(latMin, latMax, lonMin, lonMax, geoRegion.osm_id);
+        List<GeoRetailPoint> retailPoints = getRetailPoints(latMin, latMax, lonMin, lonMax, category, geoRegion.osm_id);
+        List<Region> regions = getRegions(finalLatMin, finalLatMax, finalLonMin, finalLonMax, category, geoRegion.osm_id);
 
         List<GeoRentPoint> filtered = recommendationEngine.filterRentPoints(rentPoints, retailPoints);
         List<GeoRentPoint> ranked = recommendationEngine.rankByTraffic(filtered, regions);
 
         ArrayList<GeoRentPoint> otherRentPoints = new ArrayList<>();
 
-
-        for(GeoRentPoint point : rentPoints) {
-            if(ranked.contains(point)) {
+        for (GeoRentPoint point : rentPoints) {
+            if (ranked.contains(point)) {
                 point.setType("recommendation");
-            }
-            else{
+            } else {
                 otherRentPoints.add(point);
             }
         }
 
-        GeoRecommendationResponse response = new GeoRecommendationResponse(
+        GeoJsonFeatureCollection featureCollection = recommendationEngine.getZones(regions);
+
+        return new GeoRecommendationResponse(
                 ranked,
                 otherRentPoints,
-                retailPoints
+                retailPoints,
+                featureCollection
         );
-
-        return ResponseEntity.ok(response);
     }
 
-    private List<GeoRentPoint> getRentPoints(double latMin, double latMax, double lonMin, double lonMax) {
-        double deltaLat = latMax / Math.abs(latMax);
-        double deltaLon = lonMax / Math.abs(lonMax);
-        double delta = 100.0;
-
-        latMin = Math.round(latMin * delta);
-        latMax = Math.round(latMax * delta + deltaLat);
-        lonMin = Math.round(lonMin * delta);
-        lonMax = Math.round(lonMax * delta + deltaLon);
-
-        List<Double> latitudes = new ArrayList<>();
-        for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
-
-        List<Double> longitudes = new ArrayList<>();
-        for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
-
-        return latitudes.parallelStream()
-                .flatMap(lat ->
-                        longitudes.parallelStream()
-                                .flatMap(lon ->
-                                        rentPointsService.getRentPoints(
-                                                lon / delta,
-                                                (lon + deltaLon) / delta,
-                                                (lat + deltaLat) / delta,
-                                                lat / delta
-                                        ).stream()
-                                )
-                )
-                .toList();
+    private List<GeoRentPoint> getRentPoints(double latMin, double latMax, double lonMin, double lonMax, long placeId) {
+        return rentPointsService.getRentPoints(
+                latMin,
+                lonMin,
+                latMax,
+                lonMax,
+                placeId
+        );
     }
 
 
-    private List<GeoRetailPoint> getRetailPoints(double latMin, double latMax, double lonMin, double lonMax, String category) {
-        double deltaLat = latMax / Math.abs(latMax);
-        double deltaLon = lonMax / Math.abs(lonMax);
-        double delta = 100.0;
-
-        latMin = Math.round(latMin * delta);
-        latMax = Math.round(latMax * delta + deltaLat);
-        lonMin = Math.round(lonMin * delta);
-        lonMax = Math.round(lonMax * delta + deltaLon);
-
-        List<Double> latitudes = new ArrayList<>();
-        for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
-
-        List<Double> longitudes = new ArrayList<>();
-        for (double lon = lonMin; lon < lonMax; lon += deltaLon) longitudes.add(lon);
-
-        return latitudes.parallelStream()
-                .flatMap(lat ->
-                        longitudes.parallelStream()
-                                .flatMap(lon ->
-                                        retailPointsService.getRetailPoints(
-                                                category,
-                                                lat / delta,
-                                                lon / delta,
-                                                (lat + deltaLat) / delta,
-                                                (lon + deltaLon) / delta
-                                        ).stream()
-                                )
-                )
-                .toList();
+    private List<GeoRetailPoint> getRetailPoints(double latMin, double latMax, double lonMin, double lonMax, String category, long placeId) {
+        return retailPointsService.getRetailPoints(
+                category,
+                latMin,
+                lonMin,
+                latMax,
+                lonMax,
+                placeId
+        );
     }
 
-
-    private List<Region> getRegions(double latMin, double latMax, double lonMin, double lonMax) {
+    private List<Region> getRegions(double latMin, double latMax, double lonMin, double lonMax, String category, long placeId) {
         double deltaLat = latMax / Math.abs(latMax);
         double deltaLon = lonMax / Math.abs(lonMax);
-        double delta = 500.0;
-
-        latMin = Math.round(latMin * delta);
-        latMax = Math.round(latMax * delta + deltaLat);
-        lonMin = Math.round(lonMin * delta);
-        lonMax = Math.round(lonMax * delta + deltaLon);
+        double DELTA = 100.0;
+        latMin = Math.floor(latMin * DELTA);
+        latMax = Math.floor(latMax * DELTA + deltaLat);
+        lonMin = Math.floor(lonMin * DELTA);
+        lonMax = Math.floor(lonMax * DELTA + deltaLon);
 
         List<Double> latitudes = new ArrayList<>();
         for (double lat = latMin; lat < latMax; lat += deltaLat) latitudes.add(lat);
@@ -175,19 +138,25 @@ public class GeoCommerceController {
                 .flatMap(lat ->
                         longitudes.parallelStream()
                                 .map(lon -> new Region(
-                                        lat / delta,
-                                        (lat + deltaLat) / delta,
-                                        lon / delta,
-                                        (lon + deltaLon) / delta,
+                                        lat / DELTA,
+                                        (lat + deltaLat) / DELTA,
+                                        lon / DELTA,
+                                        (lon + deltaLon) / DELTA,
                                         trafficService.getPopulation(
-                                                lat / delta,
-                                                lon / delta,
-                                                (lat + deltaLat) / delta,
-                                                (lon + deltaLon) / delta
-                                        )
+                                                lat / DELTA,
+                                                lon / DELTA,
+                                                placeId
+                                        ),
+                                        retailPointsDensityService.getRetailPoints(
+                                                category,
+                                                lat / DELTA,
+                                                lon / DELTA,
+                                                placeId
+                                        ),
+                                        1.0,
+                                        -1
                                 ))
                 )
                 .toList();
     }
-
 }

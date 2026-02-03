@@ -6,6 +6,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import ru.geocommerce.extern.client.NominatimClient;
 import ru.geocommerce.extern.dto.NominatimResponse;
 
+import java.util.List;
+
 @Component
 public class NominatimWebClient implements NominatimClient {
     private final WebClient webClient;
@@ -18,14 +20,15 @@ public class NominatimWebClient implements NominatimClient {
     }
 
     @Override
-    public NominatimResponse getCity(double lat, double lon) {
-
-        return webClient
+    public List<NominatimResponse> getCity(double latMin, double lonMin, double latMax, double lonMax) {
+        NominatimResponse[] response = webClient
                 .get()
-                .uri(baseUrl + "/reverse?format=json&lat="
-                                + lat + "&lon=" + lon + "&zoom=10&addressdetails=1")
+                .uri(baseUrl + "/search?format=json&q=city&viewbox=" +
+                                lonMin + "," + latMax + "," + lonMax + "," + latMin +
+                                "&bounded=1")
                 .retrieve()
-                .bodyToMono(NominatimResponse.class)
+                .bodyToMono(NominatimResponse[].class)
                 .block();
+        return response == null ? List.of() : List.of(response);
     }
 }

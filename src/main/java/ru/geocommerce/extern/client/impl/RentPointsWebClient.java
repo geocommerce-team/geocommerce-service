@@ -21,11 +21,11 @@ public class RentPointsWebClient implements RentPointsClient {
     }
 
     @Override
-    public List<RentPointDto> getRentPoints(double left, double right, double top, double bottom) {
+    public List<RentPointDto> getRentPoints(double latMin, double lonMin, double latMax, double lonMax) {
         RentPointDto[] response = webClient
                 .get()
-                .uri(baseUrl + "/api/rent-points?left={left}&right={right}&top={top}&bottom={bottom}",
-                        left, right, top, bottom)
+                .uri(baseUrl + "/api/rent-points?latMin={latMin}&lonMin={lonMin}&latMax={latMax}&lonMax={lonMax}",
+                        latMin, lonMin, latMax, lonMax)
                 .retrieve()
                 .bodyToMono(RentPointDto[].class)
                 .block();

@@ -2,6 +2,8 @@ package ru.geocommerce.extern.client;
 
 import ru.geocommerce.extern.dto.NominatimResponse;
 
+import java.util.List;
+
 public interface NominatimClient {
-    NominatimResponse getCity(double lat, double lon);
+    List<NominatimResponse> getCity(double latMin, double lonMin, double latMax, double lonMax);
 }

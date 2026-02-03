@@ -13,6 +13,9 @@ public class NominatimResponse {
     private long place_id;
     @Getter
     @Setter
+    private long osm_id;
+    @Getter
+    @Setter
     private String lat;
     @Getter
     @Setter

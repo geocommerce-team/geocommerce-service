@@ -5,28 +5,27 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
-import ru.geocommerce.model.GeoRetailPoint;
+import ru.geocommerce.model.GeoRetailDensity;
+import ru.geocommerce.model.GeoTraffic;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface GeoRetailPointRepository extends JpaRepository<GeoRetailPoint, String> {
+public interface GeoRetailPointsDensityRepository extends JpaRepository<GeoRetailDensity, String> {
     @Transactional
-    @Query("SELECT g FROM GeoRetailPoint g " +
+    @Query("SELECT g FROM GeoRetailDensity g " +
             "WHERE g.category = :category " +
-            "AND g.lat BETWEEN :latMin AND :latMax " +
-            "AND g.lon BETWEEN :lonMin AND :lonMax ")
-    List<GeoRetailPoint> findFreshByBoundsAndCategory(
+            "AND g.lat = :lat " +
+            "AND g.lon = :lon ")
+    List<GeoRetailDensity> findFreshByBoundsAndCategory(
             @Param("category") String category,
-            @Param("latMin") double latMin,
-            @Param("latMax") double latMax,
-            @Param("lonMin") double lonMin,
-            @Param("lonMax") double lonMax
+            @Param("lat") int lat,
+            @Param("lon") int lon
     );
 
     @Transactional
     @Modifying
-    @Query("DELETE FROM GeoRetailPoint g " +
+    @Query("DELETE FROM GeoRetailDensity g " +
             "WHERE g.lat BETWEEN :latMin AND :latMax " +
             "AND g.lon BETWEEN :lonMin AND :lonMax " +
             "AND g.category = :category")
